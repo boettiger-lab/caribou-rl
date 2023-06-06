@@ -23,6 +23,9 @@ class twoThreeFishing(gym.Env):
     #
     self.initial_pop = config.get("initial_pop", _DEFAULT_INIT_POP)
     self.Tmax = config.get("Tmax", 200)
+    self.alpha = config.get("alpha", np.float32(1))
+    self.beta = config.get("beta", np.float32(5e-2))
+    self.gamma = config.get("gamma", np.float32(6e-2))
     self.threshold = config.get("threshold", np.float32(5e-2))
     self.init_sigma = config.get("init_sigma", np.float32(5e-3))
     #
@@ -61,7 +64,7 @@ class twoThreeFishing(gym.Env):
     pop = self.population() # current state in natural units
     
     # harvest & recruitment
-    pop, reward = self.harvest(pop, action)
+    pop = self.harvest(pop, action)
     if self.fluctuating:
       pop = self.growth_fn(pop, self.parameters, self.timestep)
     else:
@@ -69,9 +72,10 @@ class twoThreeFishing(gym.Env):
     
     # Conservation goals:
     terminated = False
-    if any(pop <= self.threshold) and self.training:
+    if pop[0] < self.threshold:
       terminated = True
-      reward += self.early_end_penalty(self.timestep)
+      
+    reward = self.alpha*pop[0] - self.beta*action[0] - self.gamma*action[1]
             
     self.state = self.update_state(pop) # transform into [0, 1] space
     observation = self.state
@@ -81,14 +85,10 @@ class twoThreeFishing(gym.Env):
   ## Functions beyond those standard for gym.Env's:
   
   def harvest(self, pop, action):
-    harvested_fish = pop[:-1] * action
-    pop[0] = max(pop[0] - harvested_fish[0], 0)
-    pop[1] = max(pop[1] - harvested_fish[1], 0)
-    reward_vec = (
-      harvested_fish * self.relative_weights - self.cost * action
-    )
-    total_reward = sum(reward_vec)
-    return pop, np.float32(total_reward)
+    harvested_fish = pop[1:] * action
+    pop[1] = max(pop[1] - harvested_fish[0], 0)
+    pop[2] = max(pop[2] - harvested_fish[1], 0)
+    return pop
   
   def update_state(self, pop):
     return pop / self.bound

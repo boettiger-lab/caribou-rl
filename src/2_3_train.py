@@ -1,7 +1,7 @@
+# reticulate::use_virtualenv()
 from envs import two_three_fishing
 from envs import growth_functions
 from parameters import parameters
-import callback_fn
 from ray.rllib.algorithms import ppo
 from ray.rllib.agents.ppo import PPOTrainer
 from ray.tune import register_env

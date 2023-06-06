@@ -34,19 +34,7 @@ class parameters:
   
   def init_state(self):
     return np.array([0.5,0.5,0.7], dtype=np.float32)
+
   
-  def jiggle_params(self, noise_strength = 0.05):
-    self.params = {
-      key: val * (1 + noise_strength * np.random.normal()) 
-      for key, val in self.params.items()
-    }
-    return self.params
-  
-  def print_relevant(self):
-    aux = {
-      key:val for key, val in self.params.items() 
-      if (key not in ["tau_yx", "tau_xy"]) 
-    }
-    for key, val in aux.items():
-      print(f"{key}: {val:.3f}, ", end="", flush=True)
+ 
     
