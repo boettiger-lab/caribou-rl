@@ -15,11 +15,6 @@ P = parameters()
 _DEFAULT_PARAMS = P.parameters()
 
 iterations = 250
-experiment_nr = 1
-_DATACODE = "cache"
-_PATH = "cache"
-_FILENAME = f"PPO{iterations}"
-
 ## SETTING UP RL ALGO
 
 register_env("two_three_fishing", two_three_fishing.twoThreeFishing)
@@ -36,74 +31,28 @@ config.env_config["parameters"] = _DEFAULT_PARAMS
 config.env_config["growth_fn"] = growth_functions.K_limit_rx_drift_growth
 config.env_config["fluctuating"] = True
 config.env_config["initial_pop"] = parameters().init_state()
-# agent = config.build()
-agent = PPOTrainer(config=config)
+agent = config.build()
+
+#agent = PPOTrainer(config=config)
 #
 
-## TRAIN
-checkpoint = f"cache/checkpoint_{_DATACODE}_iter{iterations}"
 
-for i in range(iterations):
-  print(f"iteration nr. {i}", end="\r")
-  agent.train()
+iterations = 200
+checkpoint = ("cache_two_three/checkpoint_000{}".format(iterations))
 
-checkpoint = agent.save(f"cache/{checkpoint}")
+if not os.path.exists(checkpoint): # train only if no trained agent saved
+  for _ in range(iterations):
+    print(f"iteration {_}", end = "\r")
+    agent.train()
+  checkpoint = agent.save("cache")
 
-## POST TRAINING
-from eval_util import generate_episodes, episode_plots, state_policy_plot
-from plotnine import ggplot, geom_histogram, geom_bar, aes
-stats = agent.evaluate()
+agent.restore(checkpoint)
 
-config = agent.evaluation_config.env_config
-config.update({'seed': 42})
-env = agent.env_creator(config)
+stats = agent.evaluate() # built-in method to evaluate agent on eval env
+print(stats["evaluation"])
 
-episodes_df = generate_episodes(agent, env, reps = 50)
-episodes_df.to_csv(f"{_PATH}/{_FILENAME}.csv.xz", index = False)
 
-mean_rew = (
-  episodes_df
-  .groupby(["rep"])
-  .apply(lambda g: g[g['t'] == g['t'].max()])
-  .agg({"reward": "mean"})
-)
-stdev_rew = (
-  episodes_df
-  .groupby(["rep"])
-  .apply(lambda g: g[g['t'] == g['t'].max()])
-  .agg({"reward": "std"})
-)
-print(f"""
-iterations = {iterations}
-mean total reward = {mean_rew.values[0]} +/- {stdev_rew.values[0]}
-""")
 
-for i in range(5):
-  episode_plots(
-    episodes_df.loc[episodes_df.rep == i], 
-    path_and_filename = f"{_PATH}/{_FILENAME}-eps-{i}.png"
-  )
-  
-state_policy_plot(agent, env, path_and_filename= f"{_PATH}/{_FILENAME}-pol.png")
 
-def get_times_rewards(filename):
-  df = pd.read_csv(filename)
-  max_t_rew = []
-  for rep in range(50):
-    rep_df = df.loc[df.rep == rep]
-    rep_tmax_df = rep_df.loc[rep_df.t == rep_df.t.max()]
-    max_t_rew.append([rep, rep_tmax_df.t.values[0], rep_tmax_df.reward.values[0]])
-  return pd.DataFrame(max_t_rew, columns=["rep", "t","reward"])
 
-df_t_rew = get_times_rewards(f"{_PATH}/{_FILENAME}.csv.xz")
-t_max_hist = (
-  ggplot(data=df_t_rew, mapping=aes(x='rep', weight='t')) 
-  + geom_bar()
-)
-t_max_hist.save(filename=f"{_PATH}/{_FILENAME}_tmax_hist.png")
-rew_hist = (
-  ggplot(data=df_t_rew, mapping=aes(x='rep',weight='reward')) 
-  +geom_bar()
-  #+ geom_histogram(binwidth=1)
-)
-rew_hist.save(filename=f"{_PATH}/{_FILENAME}_rew_hist.png")
+
