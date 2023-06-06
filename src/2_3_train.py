@@ -16,14 +16,13 @@ _DEFAULT_PARAMS = P.parameters()
 
 iterations = 250
 experiment_nr = 1
-_DATACODE = "2FISHERY/KLIMIT_RXDRIFT"
-_PATH = f"../data/{_DATACODE}/{experiment_nr}"
+_DATACODE = "cache"
+_PATH = "cache"
 _FILENAME = f"PPO{iterations}"
 
 ## SETTING UP RL ALGO
 
 register_env("two_three_fishing", two_three_fishing.twoThreeFishing)
-register_env("two_three_fishing_v2", two_three_fishing.twoThreeFishing_v2)
 
 config = ppo.PPOConfig()
 config.training(vf_clip_param = 50.0)
